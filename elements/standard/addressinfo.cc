@@ -57,6 +57,15 @@ CLICK_CXX_PROTECT
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
+#if CLICK_BSDMODULE
+# include <click/cxxprotect.h>
+CLICK_CXX_PROTECT
+# include <sys/socket.h>
+# include <net/if.h>
+# include <net/if_dl.h>
+CLICK_CXX_UNPROTECT
+# include <click/cxxunprotect.h>
+#endif
 CLICK_DECLS
 
 AddressInfo::AddressInfo()
@@ -338,6 +347,27 @@ AddressInfo::query_ip(String s, unsigned char *store, const Element *e)
 	if (found)
 	    return true;
     }
+#elif CLICK_BSDMODULE
+    {
+	struct ifnet *ifp;
+	ifp = ifunit(s.c_str());
+	if (ifp != NULL) {
+	    struct ifaddr *ifa;
+	    IF_ADDR_LOCK(ifp);
+	    TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+		struct sockaddr_in *sin;
+		sin = satosin(ifa->ifa_addr);
+                // use first IP address
+		if (sin != NULL && sin->sin_family == AF_INET) {
+		    memcpy(store, (uint8_t *)(&(sin->sin_addr)),
+			   4 /*sizeof(sin->sin_addr)*/);
+		    IF_ADDR_UNLOCK(ifp);
+		    return true;
+		}
+	    }
+	    IF_ADDR_UNLOCK(ifp);
+	}
+    }
 #elif CLICK_NS
     if (e) {
 	char tmp[255];
@@ -444,6 +474,17 @@ AddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
 	return true;
     } else if (dev)
 	dev_put(dev);
+#elif CLICK_BSDMODULE
+    {
+	struct ifnet *ifp;
+	ifp = ifunit(s.c_str());
+	if (ifp != NULL) {
+	    struct sockaddr_dl *sdl;
+	    sdl = (struct sockaddr_dl *)ifp->if_addr->ifa_addr;
+	    memcpy(store, LLADDR(sdl), 6 /*sdl->sdl_alen*/);
+	    return true;
+	}
+    }
 #elif CLICK_NS
     if (e) {
 	char tmp[255];
