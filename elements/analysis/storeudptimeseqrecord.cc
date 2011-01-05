@@ -22,7 +22,9 @@ Programmer: Roman Chertov
 #include <clicknet/tcp.h>
 #include <click/confparse.hh>
 #include <click/error.hh>
-#include <stdio.h>
+#if CLICK_USERLEVEL
+# include <stdio.h>
+#endif
 
 
 
