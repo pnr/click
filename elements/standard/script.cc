@@ -670,6 +670,8 @@ Script::Expander::expand(const String &vname, int vartype, int quote, StringAccu
     if (vname.length() == 1 && vname[0] == '$') {
 #if CLICK_USERLEVEL
 	sa << getpid();
+#elif CLICK_BSDMODULE
+	sa << curproc->p_pid;
 #else
 	sa << current->pid;
 #endif
